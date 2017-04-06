@@ -1,9 +1,10 @@
-$(document).ready(function() {
-	console.log("ready in sendTExt.js")
+$(function(){
+	$('#btnSignUp').click(function(){
+		
 		$.ajax({
-			url: '/loadContacts',
-			data: "",
-			type: 'GET',
+			url: '/addContact',
+			data: $('form').serialize(),
+			type: 'POST',
 			success: function(response){
 				console.log(response);
 			},
@@ -11,4 +12,5 @@ $(document).ready(function() {
 				console.log(error);
 			}
 		});
+	});
 });

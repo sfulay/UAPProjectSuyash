@@ -2,7 +2,7 @@
 var leftchannel = [];
 var rightchannel = [];
 var recorder = null;
-var recording = false;
+var recording = true;
 var recordingLength = 0;
 var volume = null;
 var audioInput = null;
@@ -11,6 +11,8 @@ var audioContext = null;
 var context = null;
 var outputElement = document.getElementById('output');
 var outputString;
+var pack = true;
+var div = document.getElementById("textDiv"); 
 
 // feature detection 
 if (!navigator.getUserMedia)
@@ -23,72 +25,73 @@ if (navigator.getUserMedia){
     });
 } else alert('getUserMedia not supported in this browser.');
 
-// when key is down
-window.onkeydown = function(e){
-    
-    // if R is pressed, we start recording
-    if (e.keyCode == 82){
-        recording = true;
-        // reset the buffers for the new recording
-        leftchannel.length = rightchannel.length = 0;
-        recordingLength = 0;
-        outputElement.innerHTML = 'Recording now...';
-    // if S is pressed, we stop the recording and package the WAV file
-    } else if ( e.keyCode == 83 ){
-        
-        // we stop recording
-        recording = false;
-        
-        outputElement.innerHTML = 'Building wav file...';
 
-        // we flat the left and right channels down
-        var leftBuffer = mergeBuffers(leftchannel,recordingLength);
-        var rightBuffer = mergeBuffers(rightchannel,recordingLength);
-        // we interleave both channels together
-        var interleaved = interleave(leftBuffer, rightBuffer);
-        
-        // we create our wav file
-        var buffer = new ArrayBuffer(44 + interleaved.length * 2);
-        var view = new DataView(buffer);
-        
-        // RIFF chunk descriptor
-        writeUTFBytes(view, 0, 'RIFF');
-        view.setUint32(4, 44 + interleaved.length * 2, true);
-        writeUTFBytes(view, 8, 'WAVE');
-        // FMT sub-chunk
-        writeUTFBytes(view, 12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        // stereo (2 channels)
-        view.setUint16(22, 2, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 4, true);
-        view.setUint16(32, 4, true);
-        view.setUint16(34, 16, true);
-        // data sub-chunk
-        writeUTFBytes(view, 36, 'data');
-        view.setUint32(40, interleaved.length * 2, true);
-        
-        // write the PCM samples
-        var lng = interleaved.length;
-        var index = 44;
-        var volume = 1;
-        for (var i = 0; i < lng; i++){
-            view.setInt16(index, interleaved[i] * (0x7FFF * volume), true);
-            index += 2;
-        }
-        
-        // our final binary blob
-        var blob = new Blob([view],{type:'audio/wav'});
-        sendBlob(blob)
-        // console.log(blob)
-        // var xhr = new XMLHttpRequest();
-        // xhr.open("GET", '/sendText',true);
-        // xhr.onload = function() {};
-        // xhr.send(blob)
-        
-    }
+
+function recordData(e) {
+    recording = true;
+    // reset the buffers for the new recording
+    leftchannel.length = rightchannel.length = 0;
+    recordingLength = 0;
+  //  outputElement.innerHTML = 'Recording now...';
 }
+
+function stopAndPackage(e) {
+    recording = false;
+        
+   // outputElement.innerHTML = 'Building wav file...';
+
+    // we flat the left and right channels down
+    var leftBuffer = mergeBuffers(leftchannel,recordingLength);
+    var rightBuffer = mergeBuffers(rightchannel,recordingLength);
+    // we interleave both channels together
+    var interleaved = interleave(leftBuffer, rightBuffer);
+    
+    // we create our wav file
+    var buffer = new ArrayBuffer(44 + interleaved.length * 2);
+    var view = new DataView(buffer);
+    
+    // RIFF chunk descriptor
+    writeUTFBytes(view, 0, 'RIFF');
+    view.setUint32(4, 32 + interleaved.length * 2, true);
+    writeUTFBytes(view, 8, 'WAVE');
+    // FMT sub-chunk
+    writeUTFBytes(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    // stereo (2 channels)
+    view.setUint16(22, 2, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 4, true);
+    view.setUint16(32, 4, true);
+    view.setUint16(34, 16, true);
+    // data sub-chunk
+    writeUTFBytes(view, 36, 'data');
+    view.setUint32(40, interleaved.length * 2, true);
+    
+    // write the PCM samples
+    var lng = interleaved.length;
+    var index = 44;
+    var volume = 1;
+    for (var i = 0; i < lng; i++){
+        view.setInt16(index, interleaved[i] * (0x7FFF * volume), true);
+        index += 2;
+    }
+    
+    // our final binary blob
+    var blob = new Blob([view],{type:'audio/wav'});
+    if (blob.size >20000) {
+        sendBlob(blob);
+    }
+    // console.log(blob)
+    // var xhr = new XMLHttpRequest();
+    // xhr.open("GET", '/sendText',true);
+    // xhr.onload = function() {};
+    // xhr.send(blob)
+    recordData(e)
+        
+}
+
+
 
 function sendBlob(blob) {
 	console.log(blob)
@@ -110,6 +113,7 @@ function sendBlob(blob) {
 	    contentType: false
 	}).done(function(data) {
 	       console.log(data);
+           $("p").append(data);
 	});
 }
 
@@ -149,6 +153,8 @@ function writeUTFBytes(view, offset, string){
 
 function success(e){
     // creates the audio context
+    recordData(e)
+
     audioContext = window.AudioContext || window.webkitAudioContext;
     context = new audioContext();
 
@@ -181,7 +187,17 @@ function success(e){
     analyser.connect(recorder);
     recorder.onaudioprocess = function(e){
 
+        var array =  new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(array);
+        var average = getAverageVolume(array);
+        //console.log(average)
+
+        if (average < 10) {
+            stopAndPackage(e);
+        }
+        
         if (!recording) return;
+
         var left = e.inputBuffer.getChannelData(0);
         var right = e.inputBuffer.getChannelData(1);
         // we clone the samples
@@ -191,11 +207,6 @@ function success(e){
         recordingLength += bufferSize;
         console.log('recording');
 
-        var array =  new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(array);
-        var average = getAverageVolume(array);
-        console.log(average)
-        
 
 
 

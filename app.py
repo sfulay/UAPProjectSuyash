@@ -1,7 +1,8 @@
-import os, json, boto3
+import os, json
 import pyaudio
 import wave
 import time
+import cutAudio
 from flask import Flask, render_template, request, json, redirect, session, send_from_directory, url_for
 from flask.ext.mysql import MySQL
 from werkzeug import generate_password_hash, check_password_hash, secure_filename
@@ -32,33 +33,24 @@ def goHome():
 
 @app.route('/showSignUp')
 def showSignUp():
-    return render_template('signup.html')
+    return render_template('newSignUp.html')
 
 @app.route('/signUp', methods = ['POST'])
 def signUp():
 	_name = request.form['inputName']
+	print _name+"name"
 	_email = request.form['inputEmail']
 	_password = request.form['inputPassword']
-	print (request.form['inputNew'])
 
 	_hashed_password = generate_password_hash(_password)
 	conn = mysql.connect()
 	cursor = conn.cursor()
 	cursor.callproc('sp_createUser',(_name,_email,_password))
 	data = cursor.fetchall()
-
+#	return None
 	if len(data) is 0:
  		conn.commit()
  		return json.dumps({'message':'User created successfully !'})
-
- 	# else:
- 	# 	return json.dumps({'html':'<span>Enter the required fields</span>'})
-
-
-	# if _name and _email and _password:
-	# 	return json.dumps({'html':'<span>All fields good !!</span>'})
-	# else:
-	# 	return json.dumps({'html':'<span>Enter the required fields</span>'})
 
 @app.route('/showSignIn')
 def showSignIn():
@@ -127,87 +119,137 @@ def showInput():
 @app.route('/showUpload')
 def showUpload():
 	if session.get('user'):
-		return render_template('uploadS3.html')
+		return render_template('upload.html')
 
 @app.route('/upload', methods= ['POST'])
 def upload():
 	if session.get('user'):
 		myfile = request.files['file']
-
+		print request.form['Letter']
 		filename = secure_filename(myfile.filename)
-		
-
+		dirName, fileExtension = os.path.splitext(filename)
 		_username = session['user'][1]
-	#	os.mkdir('uploads/'+_username)
+		if not os.path.exists('uploads/'+_username+"/"+dirName):
+			os.mkdir('uploads/'+_username+"/"+dirName)
 		print session['user']
 		#print _email
 
-		path = os.path.join(app.config["UPLOAD_FOLDER"], _username)
+		path = os.path.join(app.config["UPLOAD_FOLDER"], _username,dirName)
 		path = os.path.join(path,filename)
 
 		myfile.save(path)
+		cutAudio.cutAudio(_username,dirName)
+		cutAudio.removeOldFile(_username, dirName)
 
-		myList = ["uploads/mike",'uploads/test']
-		aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'svm',_username,False)
-		print aT.fileClassification('uploads/Audio_Track-6.wav',_username,'svm')
+		# myList = ["uploads/mike",'uploads/test']
+		# aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'svm',_username,False)
+		# print aT.fileClassification('uploads/Audio_Track-6.wav',_username,'svm')
 		return render_template('index.html')
 
 @app.route('/showSendText', methods=["GET"])
 def showSendText():
-	# CHUNK = 1024
-	# FORMAT = pyaudio.paInt16
-	# CHANNELS = 2
-	# RATE = 44100
-	# RECORD_SECONDS = 1
-	# WAVE_OUTPUT_FILENAME = "output1.wav"
+	print "inloadcontacs"
+	if session.get('user'):
+		name = session['user'][1]
+		conn = mysql.connect()
+		cursor = conn.cursor()
+		cursor.callproc('sp_loadContacts',(name,))
+		tupleOfContacts = cursor.fetchall()[1:]
+		listOfContacts = []
+		for contact in tupleOfContacts:
+			listOfContacts.append(contact[0])
+		return render_template('sendText.html',listOfContacts=listOfContacts)
 
-	# p = pyaudio.PyAudio()
-
-	# stream = p.open(format=FORMAT,
-	#                 channels=CHANNELS,
-	#                 rate=RATE,
-	#                 input=True,
-	#                 frames_per_buffer=CHUNK)
-
-	# print("* recording")
-
-	# frames = []
-
-	# for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
-	#     data = stream.read(CHUNK)
-	#     frames.append(data)
-
-	# print("* done recording")
-
-	# stream.stop_stream()
-	# stream.close()
-	# p.terminate()
-
-	# wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
-	# wf.setnchannels(CHANNELS)
-	# wf.setsampwidth(p.get_sample_size(FORMAT))
-	# wf.setframerate(RATE)
-	# wf.writeframes(b''.join(frames))
-	# wf.close()
-	return render_template('sendText.html')
-
-@app.route('/addContact')
-def addContact():
+@app.route('/showAddContact')
+def showAddContact():
 	return render_template('addContact.html')
+@app.route('/addContact', methods=['POST'])
+def addContact():
+	c_name = request.form['inputName']
+	c_number = request.form['inputPhone']
+	name = session['user'][1]
+	username = session['user'][2]
+	password = session['user'][3]
+	#_hashed_password = generate_password_hash(_password)
+	conn = mysql.connect()
+	cursor = conn.cursor()
+	cursor.callproc('sp_addContactNew',(name,username,password,c_name,c_number))
+	data = cursor.fetchall()
+#	return None
+	if len(data) is 0:
+ 		conn.commit()
+ 		return json.dumps({'message':'User created successfully !'})
 
 @app.route('/sendText', methods =['POST'])
 def sendText():
-	print type(request.files)
-	path = os.path.join(app.config["UPLOAD_FOLDER"])
+	print "in send text"
+	#print type(request.files)
+	username = session['user'][1]
+	path = os.path.join(app.config["UPLOAD_FOLDER"],username)
 	filename = str(time.time())+"something.wav"
 	path = os.path.join(path,filename)
-
 	request.files['lkjkj'].save(path)
+	print path
+	classification = aT.fileClassification(path,'uploads/'+username+'/'+username,'extratrees')
+	index = int(classification[0])
+	print index
+	print classification
+	letter = classification[2][index]
+	os.remove(path)
+	return letter
 
-	return render_template('index.html')
+@app.route('/train')
+def train():
+	if session.get('user'):
+		username = session['user'][1]
+		if os.path.exists('uploads/'+username+'/'+username):
+			os.remove('uploads/'+username+'/'+username)
+		if os.path.exists('uploads/'+username+'/'+username+'.arff'):
+			os.remove('uploads/'+username+'/'+username+'.arff')		
+		if os.path.exists('uploads/'+username+'/'+username+"MEANS"):
+			os.remove('uploads/'+username+'/'+username+"MEANS")
+		if os.path.exists('uploads/'+username+'/'+username+"SMtemp"):
+			os.remove('uploads/'+username+'/'+username+"SMtemp")
+		if os.path.exists('uploads/'+username+'/'+username+"SMtemp.arff"):
+			os.remove('uploads/'+username+'/'+username+"SMtemp.arff")
+		if os.path.exists('uploads/'+username+'/'+username+"SMtempMEANS"):
+			os.remove('uploads/'+username+'/'+username+"SMtempMEANS")
+
+		listOfDirs = os.listdir('uploads/'+username)
+		myList = []
+		for directory in listOfDirs:
+			myList.append('uploads/'+username+'/'+directory)
+		aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'extratrees','uploads/'+username+'/'+username,False)
+		if os.path.exists('uploads/'+username+'/'+directory+'/'+directory+'.wav'):
+			os.remove('uploads/'+username+'/'+directory+'/'+directory+'.wav')
+		return render_template('userHomeNew.html')
+
+
+@app.route('/loadContacts', methods=['GET'])
+def loadContacts():
+	print "inloadcontacs"
+	if session.get('user'):
+		name = session['user'][1]
+		conn = mysql.connect()
+		cursor = conn.cursor()
+		cursor.callproc('sp_loadContacts',(name,))
+		tupleOfContacts = cursor.fetchall()[1:]
+		listOfContacts = []
+		for contact in tupleOfContacts:
+			listOfContacts.append(contact)
+		return listOfContacts
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
-	port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+	port = int(os.environ.get("PORT", 5000))
+	app.run(host='0.0.0.0', port=port)
 

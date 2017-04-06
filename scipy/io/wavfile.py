@@ -239,8 +239,10 @@ def read(filename, mmap=False):
         bit_depth = 8
         format_tag = WAVE_FORMAT_PCM
         while fid.tell() < file_size:
+            #print ("hi")
             # read the next chunk
             chunk_id = fid.read(4)
+            #print (chunk_id)
             if chunk_id == b'fmt ':
                 fmt_chunk_received = True
                 fmt_chunk = _read_fmt_chunk(fid, is_big_endian)
@@ -263,6 +265,7 @@ def read(filename, mmap=False):
                 # Skip alignment chunks without warning
                 _skip_unknown_chunk(fid, is_big_endian)
             else:
+                #print (chunk_id)
                 warnings.warn("Chunk (non-data) not understood, skipping it.",
                               WavFileWarning)
                 _skip_unknown_chunk(fid, is_big_endian)
