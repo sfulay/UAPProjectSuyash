@@ -25,6 +25,25 @@ if (navigator.getUserMedia){
     });
 } else alert('getUserMedia not supported in this browser.');
 
+function reply_click(clicked_id)  {
+    text = document.getElementById('text').innerHTML;
+    var fd = new FormData();
+    fd.append('clicked_id', clicked_id);
+    fd.append('text',text)
+    $.ajax({
+        type: 'POST',
+        url: '/selectedContact',
+        data: fd,
+        processData: false,
+        contentType: false
+    }).done(function(data) {
+           console.log("Successfuly sent");
+           alert("Sent message to "+clicked_id+"!");
+           document.getElementById('text').innerHTML = ""
+          // $("p").append(data);
+    });
+
+}
 
 
 function recordData(e) {
@@ -113,7 +132,15 @@ function sendBlob(blob) {
 	    contentType: false
 	}).done(function(data) {
 	       console.log(data);
-           $("p").append(data);
+            if (data == "send") {
+
+            }
+            if (data == "space") {
+                data = " "
+            }
+           document.getElementById("text").append(data);
+
+          // $("p").append(data);
 	});
 }
 
@@ -226,10 +253,6 @@ function success(e){
         average = values / length;
         return average;
     }
-
-
-
-
 
 
     // we connect the recorder

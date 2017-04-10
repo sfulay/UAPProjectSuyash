@@ -7,7 +7,14 @@ from flask import Flask, render_template, request, json, redirect, session, send
 from flask.ext.mysql import MySQL
 from werkzeug import generate_password_hash, check_password_hash, secure_filename
 from pyAudioAnalysis import audioTrainTest as aT
+from twilio.rest import Client
 
+# Your Account SID from twilio.com/console
+account_sid = "AC7407fc4200b8481833bce71b66bc6d4a"
+# Your Auth Token from twilio.com/console
+auth_token  = "c53f3e49f9c08602d1cc008bc588d777"
+
+client = Client(account_sid, auth_token)
 
 mysql = MySQL()
 app = Flask(__name__)
@@ -239,7 +246,21 @@ def loadContacts():
 			listOfContacts.append(contact)
 		return listOfContacts
 
-
+@app.route('/selectedContact', methods = ['GET', 'POST'])
+def selectedContact():
+	print "IN SELECTED CONTACT"
+	name= request.form['clicked_id']
+	text = request.form['text']
+	conn = mysql.connect()
+	cursor = conn.cursor()
+	cursor.callproc('sp_getNumber',(name,))
+	number = cursor.fetchall()[0][0]
+	print number
+	message = client.messages.create(
+    to=number, 
+    from_="+16103475834",
+    body=text)
+	return "success!"
 
 
 
