@@ -12,7 +12,8 @@ var context = null;
 var outputElement = document.getElementById('output');
 var outputString;
 var pack = true;
-var div = document.getElementById("textDiv"); 
+var div = document.getElementById("textDiv");
+var counter = 0
 
 // feature detection 
 if (!navigator.getUserMedia)
@@ -24,6 +25,16 @@ if (navigator.getUserMedia){
     alert('Error capturing audio.');
     });
 } else alert('getUserMedia not supported in this browser.');
+
+//Change all the contact button colors to green
+var ul = document.getElementById('contacts')
+var items = ul.getElementsByTagName('button')
+items[0].style.background = "rgba(255,0,0,0.6)";
+for (i=1; i<items.length;i++) {
+    items[i].style.background = "rgba(0,255,0,0.6)";
+}
+
+
 
 function reply_click(clicked_id)  {
     text = document.getElementById('text').innerHTML;
@@ -132,14 +143,30 @@ function sendBlob(blob) {
 	    contentType: false
 	}).done(function(data) {
 	       console.log(data);
+           var ul = document.getElementById('contacts')
+           var items = ul.getElementsByTagName('button')
+           console.log(items)
             if (data == "send") {
-
+                currentContact = items[counter%items.length]
+                reply_click(currentContact.id)
             }
-            if (data == "space") {
-                data = " "
-            }
-           document.getElementById("text").append(data);
+            else if (data == "next") {
+                counter +=1;
+                items[(counter-1)%(items.length)].style.background = "rgba(0,255,0,0.6)";
 
+                items[counter%(items.length)].style.background = "rgba(255,0,0,0.6)";
+            }
+            else if (data == "space") {
+                document.getElementById("text").append(" ")
+            }
+            else if (data == "back") {
+                myText = document.getElementById("text").innerHTML
+                myText = myText.slice(-1)
+                document.getElementById("text").innerHTML = myText
+            }
+            else {
+                document.getElementById("text").append(data)
+            }
           // $("p").append(data);
 	});
 }
@@ -219,7 +246,7 @@ function success(e){
         var average = getAverageVolume(array);
         //console.log(average)
 
-        if (average < 10) {
+        if (average < 40) {
             stopAndPackage(e);
         }
         
