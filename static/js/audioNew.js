@@ -34,7 +34,9 @@ for (i=1; i<items.length;i++) {
     items[i].style.background = "rgba(0,255,0,0.6)";
 }
 
-
+function stopManual() {
+    recording = false;
+}
 
 function reply_click(clicked_id)  {
     text = document.getElementById('text').innerHTML;
@@ -109,7 +111,7 @@ function stopAndPackage(e) {
     
     // our final binary blob
     var blob = new Blob([view],{type:'audio/wav'});
-    if (blob.size >20000) {
+    if (blob.size >70000) {
         sendBlob(blob);
     }
     // console.log(blob)
@@ -245,12 +247,12 @@ function success(e){
         analyser.getByteFrequencyData(array);
         var average = getAverageVolume(array);
         //console.log(average)
+      //  if (!recording || average < 100) return;
 
-        if (average < 40) {
+        if (average < 5) {
             stopAndPackage(e);
         }
         
-        if (!recording) return;
 
         var left = e.inputBuffer.getChannelData(0);
         var right = e.inputBuffer.getChannelData(1);

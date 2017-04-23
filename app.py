@@ -197,12 +197,12 @@ def sendText():
 	path = os.path.join(path,filename)
 	request.files['lkjkj'].save(path)
 	print path
-	classification = aT.fileClassification(path,'uploads/'+username+'/'+username,"svm")
+	classification = aT.fileClassification(path,'uploads/'+username+'/'+username,"extratrees")
 	index = int(classification[0])
 	print index
 	print classification
 	letter = classification[2][index]
-	os.remove(path)
+	#os.remove(path)
 	return letter
 
 @app.route('/train')
@@ -226,7 +226,7 @@ def train():
 		myList = []
 		for directory in listOfDirs:
 			myList.append('uploads/'+username+'/'+directory)
-		aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'svm','uploads/'+username+'/'+username,False)
+		aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'extratrees','uploads/'+username+'/'+username,False)
 		if os.path.exists('uploads/'+username+'/'+directory+'/'+directory+'.wav'):
 			os.remove('uploads/'+username+'/'+directory+'/'+directory+'.wav')
 		return render_template('userHomeNew.html')
