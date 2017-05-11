@@ -197,7 +197,7 @@ def sendText():
 	path = os.path.join(path,filename)
 	request.files['lkjkj'].save(path)
 	print path
-	classification = aT.fileClassification(path,'uploads/'+username+'/'+username,"extratrees")
+	classification = aT.fileClassification(path,'uploads/'+username+'/'+username,"svm")
 	index = int(classification[0])
 	print index
 	print classification
@@ -226,9 +226,10 @@ def train():
 		myList = []
 		for directory in listOfDirs:
 			myList.append('uploads/'+username+'/'+directory)
-		aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'extratrees','uploads/'+username+'/'+username,False)
 		if os.path.exists('uploads/'+username+'/'+directory+'/'+directory+'.wav'):
 			os.remove('uploads/'+username+'/'+directory+'/'+directory+'.wav')
+		aT.featureAndTrain(myList,1.0,1.0,aT.shortTermWindow,aT.shortTermStep,'svm','uploads/'+username+'/'+username,False)
+
 		return render_template('userHomeNew.html')
 
 
@@ -263,8 +264,14 @@ def selectedContact():
 	return "success!"
 
 
+@app.route('/uploadTraining', methods = ['GET', 'POST'])
+def uploadTraining():
+	request.files['lkjkj'].save('uploads/'+'file.wav')
+	return "success"
 
-
+@app.route('/showRecordTraining')
+def showRecordTraining():
+	return render_template('recordTraining.html')
 
 
 

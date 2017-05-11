@@ -26,6 +26,26 @@ def cutAudio(username, letter):
         #print filePath
         chunk.export(filePath.format(i), format="wav")
 
+def cutAudioForSending(username, path):
+    song = AudioSegment.from_wav(path)
+    chunks = split_on_silence(song,
+    # must be silent for at least half a second
+        min_silence_len=300,
+
+    # consider it silent if quieter than -16 dBFS
+        silence_thresh=-45
+    )
+    for i,chunk in enumerate(chunks):
+        #print len(chunks)
+        #print letter
+        #print letter+'/'+chunk+'{0}'+'.wav'.format(i)
+        # print '{0}'
+        # print '/Austin/'+letter
+        # print '/Austin/'+letter+'/'
+        # print chunk
+        filePath = "uploads/"+username+'/'+ 'tempAudio'+'/' 'chunk'+str(i)+'.wav'
+        #print filePath
+        chunk.export(filePath.format(i), format="wav")
 def removeOldFile(username, letter):
     os.remove("uploads/"+username+'/'+letter+'/'+letter+'.wav')
     #
